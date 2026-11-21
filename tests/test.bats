@@ -40,17 +40,33 @@ setup() {
 }
 
 health_checks() {
-  # Do something useful here that verifies the add-on
-
-  # You can check for specific information in headers:
-  # run curl -sfI https://${PROJNAME}.ddev.site
-  # assert_output --partial "HTTP/2 200"
-  # assert_output --partial "test_header"
-
-  # Or check if some command gives expected output:
-  DDEV_DEBUG=true run ddev launch
+  # Each package manager cache points at the global cache
+  run ddev exec 'composer config --global cache-dir'
   assert_success
-  assert_output --partial "FULLURL https://${PROJNAME}.ddev.site"
+  assert_output "/mnt/ddev-global-cache/composer"
+
+  run ddev exec 'npm config get cache'
+  assert_success
+  assert_output "/mnt/ddev-global-cache/npm"
+
+  run ddev exec 'yarn cache dir'
+  assert_success
+  assert_output --partial "/mnt/ddev-global-cache/yarn/classic"
+
+  run ddev exec 'readlink ~/.yarn/berry/cache'
+  assert_success
+  assert_output "/mnt/ddev-global-cache/yarn/berry"
+
+  run ddev exec 'echo "${COREPACK_HOME} ${PIP_CACHE_DIR}"'
+  assert_success
+  assert_output "/mnt/ddev-global-cache/corepack /mnt/ddev-global-cache/pip"
+
+  # What web writes lands in the shared ddev-global-cache volume
+  probe="npm/.probe-${PROJNAME}-${RANDOM}"
+  run ddev exec "touch /mnt/ddev-global-cache/${probe}"
+  assert_success
+  run docker run --rm -v ddev-global-cache:/mnt/ddev-global-cache busybox:stable rm "/mnt/ddev-global-cache/${probe}"
+  assert_success
 }
 
 teardown() {

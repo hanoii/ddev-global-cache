@@ -1,38 +1,21 @@
 #ddev-generated
+# Mounts the shared ddev-global-cache volume in web and points the package
+# manager caches back at it, as DDEV did before v1.25.6, so every project
+# shares one download cache instead of each keeping its own.
+# Yarn needs a start-up step, web-entrypoint.d/global-cache.sh, which reads
+# GLOBAL_CACHE_YARN_DIR.
 services:
-  global-cache:
-    container_name: ddev-${DDEV_SITENAME}-global-cache
-    image: ${GLOBAL_CACHE_DOCKER_IMAGE:-ddev/ddev-utilities:latest}
-    command: ["sh", "-c", "trap exit TERM; sleep infinity & wait"]
-    restart: "no"
-    # These labels ensure this service is discoverable by DDEV.
-    labels:
-      com.ddev.site-name: ${DDEV_SITENAME}
-      com.ddev.approot: ${DDEV_APPROOT}
-
+  web:
     volumes:
-      - ".:/mnt/ddev_config"
-      - "ddev-global-cache:/mnt/ddev-global-cache"
-    # Customize DDEV behavior for this service, see
-    # https://docs.ddev.com/en/stable/users/extend/custom-docker-services/#x-ddev-extension
-    # x-ddev:
-    #   # Shell for `ddev ssh -s global-cache`, the default is `sh`.
-    #   # The shell must exist in the image.
-    #   ssh-shell: bash
-    #   # Extra text for the INFO column of `ddev describe`,
-    #   # such as credentials or usage notes.
-    #   describe-info: |
-    #     User: admin
-    #     Pass: admin
-    #   # Text for the URL/PORT column of `ddev describe`.
-    #   describe-url-port: "extra help here"
-    #   # Skip injecting com.ddev.* labels, so `ddev start` doesn't wait
-    #   # for a one-shot container that exits. Requires DDEV v1.25.3+.
-    #   omit-ddev-labels: true
-    #   # User for `ddev ssh`, `ddev exec`, and custom commands in this
-    #   # service. Requires DDEV v1.25.5+.
-    #   container-user: www-data
-    #   # Images to pull before building this service, such as a `FROM`
-    #   # in the Dockerfile. Requires DDEV v1.25.5+.
-    #   pull-images:
-    #     - busybox:stable
+      - ddev-global-cache:/mnt/ddev-global-cache
+    environment:
+      - COMPOSER_CACHE_DIR=/mnt/ddev-global-cache/composer
+      - COREPACK_HOME=/mnt/ddev-global-cache/corepack
+      - npm_config_cache=/mnt/ddev-global-cache/npm
+      - PIP_CACHE_DIR=/mnt/ddev-global-cache/pip
+      - GLOBAL_CACHE_YARN_DIR=/mnt/ddev-global-cache/yarn
+
+volumes:
+  ddev-global-cache:
+    name: ddev-global-cache
+    external: true

@@ -2,5 +2,6 @@ name: global-cache
 
 project_files:
   - docker-compose.global-cache.yaml
+  - web-entrypoint.d/global-cache.sh
 
-ddev_version_constraint: '>= v1.24.10'
+ddev_version_constraint: '>= v1.25.6'
