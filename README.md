@@ -30,8 +30,12 @@ time `web` starts.
 
 ## Why
 
-DDEV made caches per project to keep projects apart. A shared cache let one
-project's Terminus login carry into every other project.
+DDEV made caches per project for two reasons:
+
+- To keep projects apart. A shared cache let one project's Terminus login carry
+  into every other project.
+- To prepare for Apple `container`, which can't share a volume that more than
+  one container writes to. See [Apple `container`](#apple-container) below.
 
 The package caches are a different case. With many projects, mostly on the
 same frameworks, separate caches mean:
@@ -91,6 +95,41 @@ These stay in the project cache:
 
 The caches DDEV v1.25.5 and earlier left in `ddev-global-cache` are used
 again, so packages downloaded before the upgrade aren't fetched again.
+
+## Apple `container`
+
+DDEV is working on support for Apple's native
+[`container`](https://github.com/apple/container) runtime, through
+[socktainer](https://github.com/socktainer/socktainer), which serves the Docker
+API on top of it
+([ddev/ddev#7372](https://github.com/ddev/ddev/issues/7372)). It isn't
+released yet.
+
+Apple `container` runs each container in its own VM, and a named volume is an
+ext4 disk image attached to that VM. A volume can therefore be held read-write
+by one container, or read-only by any number of them, but not read-write by two.
+A second read-write attach fails with `The storage device attachment is
+invalid`. Apple closed this as working as designed: sharing would need a
+cluster filesystem
+([apple/container#1133](https://github.com/apple/container/issues/1133)).
+
+`ddev-global-cache` was mounted read-write by `web`, `db` and the router of
+every project, so DDEV split it by writer
+([ddev/ddev#8895](https://github.com/ddev/ddev/issues/8895)):
+
+- The router got its own volume
+  ([ddev/ddev#8945](https://github.com/ddev/ddev/pull/8945)).
+- `web` and `db` got a cache volume each, per project, shipped in v1.25.6
+  ([ddev/ddev#9024](https://github.com/ddev/ddev/pull/9024)).
+- The mkcert root CA is copied into `web` instead of mounted
+  ([ddev/ddev#9045](https://github.com/ddev/ddev/pull/9045)).
+- DDEV's tests now fail when a named volume has more than one writer
+  ([ddev/ddev#9046](https://github.com/ddev/ddev/pull/9046)).
+
+This add-on brings back exactly what Apple `container` can't do: the `web`
+container of every project writes to `ddev-global-cache`. With it, a second
+project's `web` can't start while another project is running. Don't install it
+in projects you run on Apple `container`.
 
 ## Installation
 
